@@ -27,9 +27,12 @@ jobs:
           cat > config/local.xcconfig <<'EOF'
           CURRENT_PROJECT_VERSION = 11.7.1
           APPCENTER_SECRET =
-          CODE_SIGNING_REQUIRED = NO
-          CODE_SIGNING_ALLOWED = NO
+          CODE_SIGN_IDENTITY = Local Self-Signed
+          OTHER_CODE_SIGN_FLAGS = --timestamp=none --deep --options runtime
           EOF
+
+      - name: create throwaway signing certificate
+        run: scripts/codesign/setup_ci_pr.sh
 
       - name: test
         run: |
@@ -49,6 +52,6 @@ jobs:
 
       - uses: actions/upload-artifact@v4
         with:
-          name: AltTab-unsigned
+          name: AltTab-build
           path: AltTab.zip
           retention-days: 30
