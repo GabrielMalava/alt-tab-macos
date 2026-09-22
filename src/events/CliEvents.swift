@@ -161,6 +161,10 @@ class CliServer {
             Logger.info { "QAMARK \(mark)" }
             return noOutput
         }
+        if rawValue.hasPrefix("--set-groups="),
+           ExternalGroups.replace(String(rawValue.dropFirst("--set-groups=".count))) {
+            return noOutput
+        }
         if rawValue.hasPrefix("--focus="),
            let id = CGWindowID(rawValue.dropFirst("--focus=".count)), let window = (Windows.list.first { $0.cgWindowId == id }) {
             window.focus()
@@ -545,7 +549,7 @@ class CliClient {
     static func detectCommand() -> String? {
         let args = CommandLine.arguments
         if args.count == 2 && !args[1].starts(with: "--logs=") {
-            if args[1] == "--list" || args[1] == "--detailed-list" || args[1] == "--qa-state" || args[1] == "--qa-telemetry" || args[1] == "--hide" || args[1].hasPrefix("--qa-mark=") || args[1].hasPrefix("--focus=") || args[1].hasPrefix("--focusUsingLastFocusOrder=") || args[1].hasPrefix("--show=") {
+            if args[1] == "--list" || args[1] == "--detailed-list" || args[1] == "--qa-state" || args[1] == "--qa-telemetry" || args[1] == "--hide" || args[1].hasPrefix("--qa-mark=") || args[1].hasPrefix("--focus=") || args[1].hasPrefix("--focusUsingLastFocusOrder=") || args[1].hasPrefix("--show=") || args[1].hasPrefix("--set-groups=") {
                 return args[1]
             }
         }

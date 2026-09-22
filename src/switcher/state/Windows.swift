@@ -126,9 +126,10 @@ class Windows {
     }
 
     static func refreshWhichWindowsToShowTheUser() {
+        ExternalGroups.collapse(list)
         guard Preferences.showsOneWindowPerApp() else { return }
         let current = AttentionEngine.currentUserContext
-        for (pid, windows) in Dictionary(grouping: list, by: { $0.application.pid }) {
+        for (pid, windows) in Dictionary(grouping: list.filter { !ExternalGroups.isGrouped($0) }, by: { $0.application.pid }) {
             let eligible = windows.filter { $0.shouldShowTheUser }
             let currentWid = current.pid == pid ? current.wid : nil
             let lastAttendedWid = AttentionEngine.lastAttendedWindow(pid)
@@ -898,5 +899,46 @@ struct WindowFilters {
             spacesToShow: Preferences.spacesToShow[i],
             screensToShow: Preferences.screensToShow[i],
             groupTabs: Preferences.groupTabs(i))
+    }
+}
+
+class ExternalGroups {
+    private static var groupByWindowId = [CGWindowID: Int]()
+
+    static func isGrouped(_ window: Window) -> Bool {
+        guard let id = window.cgWindowId else { return false }
+        return groupByWindowId[id] != nil
+    }
+
+    static func replace(_ payload: String) -> Bool {
+        var parsed = [CGWindowID: Int]()
+        var index = 0
+        for group in payload.split(separator: ";") {
+            let members = group.split(separator: ",").compactMap { CGWindowID($0.trimmingCharacters(in: .whitespaces)) }
+            guard members.count > 1 else { return false }
+            for member in members {
+                guard parsed[member] == nil else { return false }
+                parsed[member] = index
+            }
+            index += 1
+        }
+        groupByWindowId = parsed
+        Logger.info { "external groups: \(index) group(s) over \(parsed.count) windows" }
+        return true
+    }
+
+    static func collapse(_ windows: [Window]) {
+        guard !groupByWindowId.isEmpty else { return }
+        var membersByGroup = [Int: [Window]]()
+        for window in windows where window.shouldShowTheUser {
+            guard let id = window.cgWindowId, let group = groupByWindowId[id] else { continue }
+            membersByGroup[group, default: []].append(window)
+        }
+        for members in membersByGroup.values where members.count > 1 {
+            guard let representative = members.min(by: { $0.lastFocusOrder < $1.lastFocusOrder }) else { continue }
+            for window in members where window !== representative {
+                window.shouldShowTheUser = false
+            }
+        }
     }
 }
